@@ -235,6 +235,80 @@
       color: var(--good);
     }
 
+    .sudoku-panel {
+      width: min(560px, 100%);
+    }
+
+    .difficulty-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .difficulty-row button {
+      min-height: 40px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .difficulty-row button.is-active {
+      border-color: var(--accent);
+      background: #e7f1ff;
+      color: var(--accent-dark);
+    }
+
+    .sudoku-board {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(0, 1fr));
+      width: min(100%, 432px);
+      margin: 0 auto 14px;
+      border: 2px solid var(--text);
+      background: var(--text);
+      gap: 1px;
+    }
+
+    .sudoku-cell {
+      width: 100%;
+      aspect-ratio: 1;
+      min-width: 0;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      text-align: center;
+      font: 700 clamp(1rem, 5vw, 1.35rem) / 1 system-ui, sans-serif;
+      color: var(--accent-dark);
+      background: #fff;
+      box-shadow: none;
+      outline: none;
+    }
+
+    .sudoku-cell:nth-child(3n) {
+      border-right: 2px solid var(--text);
+    }
+
+    .sudoku-cell:nth-child(9n) {
+      border-right: 0;
+    }
+
+    .sudoku-cell:nth-child(n + 19):nth-child(-n + 27),
+    .sudoku-cell:nth-child(n + 46):nth-child(-n + 54) {
+      border-bottom: 2px solid var(--text);
+    }
+
+    .sudoku-cell.is-given {
+      color: var(--text);
+      background: #eef5ff;
+    }
+
+    .sudoku-cell.is-wrong {
+      color: #b42318;
+      background: #fff1f0;
+    }
+
     @media (max-width: 480px) {
       main {
         padding: 24px;
@@ -262,10 +336,11 @@
 <body>
   <main>
     <h1>连连看</h1>
-    <p class="version">版本：v4</p>
-    <p>翻开两张相同卡片即可消除，全部配对就通关。</p>
+    <p class="version">版本：v5</p>
+    <p>选择一个小游戏开始。</p>
     <div class="actions">
-      <button class="primary-button" id="openGame" type="button">开始游戏</button>
+      <button class="primary-button" id="openGame" type="button">连连看</button>
+      <button class="ghost-button" id="openSudoku" type="button">数独</button>
     </div>
   </main>
 
@@ -304,8 +379,36 @@
     </div>
   </section>
 
+  <section class="game-modal" id="sudokuModal" aria-hidden="true" aria-labelledby="sudokuTitle" role="dialog">
+    <div class="game-panel sudoku-panel">
+      <div class="game-header">
+        <div>
+          <h2 id="sudokuTitle">数独</h2>
+          <p>选择难度，填入 1 到 9，让每行、每列、每宫都不重复。</p>
+        </div>
+        <button class="ghost-button" id="closeSudoku" type="button">关闭</button>
+      </div>
+
+      <div class="difficulty-row" aria-label="数独难度">
+        <button class="is-active" data-sudoku-level="easy" type="button">易</button>
+        <button data-sudoku-level="medium" type="button">中</button>
+        <button data-sudoku-level="hard" type="button">难</button>
+        <button data-sudoku-level="expert" type="button">超难</button>
+      </div>
+
+      <div class="sudoku-board" id="sudokuBoard" aria-label="数独棋盘"></div>
+      <p class="game-message" id="sudokuMessage"></p>
+
+      <div class="actions">
+        <button class="primary-button" id="checkSudoku" type="button">检查</button>
+        <button class="ghost-button" id="restartSudoku" type="button">重新开始</button>
+      </div>
+    </div>
+  </section>
+
   <script>
     const openGame = document.querySelector("#openGame");
+    const openSudoku = document.querySelector("#openSudoku");
     const closeGame = document.querySelector("#closeGame");
     const restartGame = document.querySelector("#restartGame");
     const gameModal = document.querySelector("#gameModal");
@@ -318,6 +421,13 @@
     const updateText = document.querySelector("#updateText");
     const updateAction = document.querySelector("#updateAction");
     const updateDismiss = document.querySelector("#updateDismiss");
+    const sudokuModal = document.querySelector("#sudokuModal");
+    const closeSudoku = document.querySelector("#closeSudoku");
+    const sudokuBoard = document.querySelector("#sudokuBoard");
+    const sudokuMessage = document.querySelector("#sudokuMessage");
+    const checkSudoku = document.querySelector("#checkSudoku");
+    const restartSudoku = document.querySelector("#restartSudoku");
+    const sudokuLevelButtons = document.querySelectorAll("[data-sudoku-level]");
     const tiles = ["医", "码", "云", "测", "端", "页", "库", "AI"];
     let audioContext = null;
     let waitingWorker = null;
@@ -328,6 +438,14 @@
     let lockBoard = false;
     let moves = 0;
     let matchedPairs = 0;
+    let currentSudokuLevel = "easy";
+    const sudokuSolution = "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
+    const sudokuPuzzles = {
+      easy: "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
+      medium: "000678900670000348100340000859000400006803700003000856000537004287000630005286000",
+      hard: "000000900070195000100000500000061003400000001700920000000000280000410005305000000",
+      expert: "000000000070000300000300007050000020400800001000000050900000000000010005000200070"
+    };
 
     function shuffle(items) {
       return [...items].sort(() => Math.random() - 0.5);
@@ -487,6 +605,93 @@
     gameModal.addEventListener("click", (event) => {
       if (event.target === gameModal) {
         hideGame();
+      }
+    });
+
+    function setSudokuLevel(level) {
+      currentSudokuLevel = level;
+      sudokuLevelButtons.forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.sudokuLevel === level);
+      });
+      buildSudoku();
+    }
+
+    function buildSudoku() {
+      const puzzle = sudokuPuzzles[currentSudokuLevel];
+      sudokuBoard.innerHTML = "";
+      sudokuMessage.textContent = "";
+
+      [...puzzle].forEach((value, index) => {
+        const input = document.createElement("input");
+        input.className = "sudoku-cell";
+        input.type = "tel";
+        input.inputMode = "numeric";
+        input.maxLength = 1;
+        input.setAttribute("aria-label", `第 ${Math.floor(index / 9) + 1} 行第 ${(index % 9) + 1} 列`);
+
+        if (value !== "0") {
+          input.value = value;
+          input.readOnly = true;
+          input.classList.add("is-given");
+        } else {
+          input.addEventListener("input", () => {
+            input.value = input.value.replace(/[^1-9]/g, "").slice(0, 1);
+            input.classList.remove("is-wrong");
+            sudokuMessage.textContent = "";
+          });
+        }
+
+        sudokuBoard.appendChild(input);
+      });
+    }
+
+    function checkSudokuBoard() {
+      const cells = [...sudokuBoard.querySelectorAll(".sudoku-cell")];
+      let hasBlank = false;
+      let hasWrong = false;
+
+      cells.forEach((cell, index) => {
+        const isWrong = cell.value && cell.value !== sudokuSolution[index];
+        hasBlank = hasBlank || !cell.value;
+        hasWrong = hasWrong || isWrong;
+        cell.classList.toggle("is-wrong", isWrong);
+      });
+
+      if (hasWrong) {
+        sudokuMessage.textContent = "有数字不对，红色格子需要修改。";
+        return;
+      }
+
+      if (hasBlank) {
+        sudokuMessage.textContent = "还有空格，继续完成。";
+        return;
+      }
+
+      sudokuMessage.textContent = "通关成功！";
+      playSound("win");
+    }
+
+    function showSudoku() {
+      sudokuModal.classList.add("is-open");
+      sudokuModal.setAttribute("aria-hidden", "false");
+      buildSudoku();
+    }
+
+    function hideSudoku() {
+      sudokuModal.classList.remove("is-open");
+      sudokuModal.setAttribute("aria-hidden", "true");
+    }
+
+    openSudoku.addEventListener("click", showSudoku);
+    closeSudoku.addEventListener("click", hideSudoku);
+    restartSudoku.addEventListener("click", buildSudoku);
+    checkSudoku.addEventListener("click", checkSudokuBoard);
+    sudokuLevelButtons.forEach((button) => {
+      button.addEventListener("click", () => setSudokuLevel(button.dataset.sudokuLevel));
+    });
+    sudokuModal.addEventListener("click", (event) => {
+      if (event.target === sudokuModal) {
+        hideSudoku();
       }
     });
 
