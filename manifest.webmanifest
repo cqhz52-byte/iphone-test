@@ -1,7 +1,7 @@
 {
-  "name": "iphone-test 连连看",
+  "name": "连连看",
   "short_name": "连连看",
-  "description": "A lightweight installable PWA with a link matching mini game.",
+  "description": "连连看 PWA 小游戏。",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
