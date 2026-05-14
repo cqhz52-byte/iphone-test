@@ -1,4 +1,4 @@
-const CACHE_NAME = "link-game-pwa-v7";
+const CACHE_NAME = "link-game-pwa-v8";
 const ASSETS = [
   "./",
   "./index.html",
