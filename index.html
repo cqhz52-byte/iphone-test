@@ -101,6 +101,45 @@
       color: var(--text);
     }
 
+    .update-banner {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: min(640px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 18px 44px rgba(10, 24, 45, 0.18);
+      z-index: 20;
+    }
+
+    .update-banner[hidden] {
+      display: none;
+    }
+
+    .update-banner strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .update-banner p {
+      margin: 0;
+      font-size: 0.92rem;
+    }
+
+    .update-actions {
+      display: flex;
+      flex-shrink: 0;
+      gap: 8px;
+    }
+
     a {
       color: var(--accent);
     }
@@ -208,18 +247,38 @@
       .game-header {
         flex-direction: column;
       }
+
+      .update-banner {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .update-actions {
+        justify-content: flex-end;
+      }
     }
   </style>
 </head>
 <body>
   <main>
     <h1>连连看</h1>
-    <p class="version">版本：v3</p>
+    <p class="version">版本：v4</p>
     <p>翻开两张相同卡片即可消除，全部配对就通关。</p>
     <div class="actions">
       <button class="primary-button" id="openGame" type="button">开始游戏</button>
     </div>
   </main>
+
+  <div class="update-banner" id="updateBanner" hidden>
+    <div>
+      <strong id="updateTitle">发现新版本</strong>
+      <p id="updateText">点击更新安装，完成后会自动刷新。</p>
+    </div>
+    <div class="update-actions">
+      <button class="primary-button" id="updateAction" type="button">更新安装</button>
+      <button class="ghost-button" id="updateDismiss" type="button">稍后</button>
+    </div>
+  </div>
 
   <section class="game-modal" id="gameModal" aria-hidden="true" aria-labelledby="gameTitle" role="dialog">
     <div class="game-panel">
@@ -254,8 +313,16 @@
     const movesLabel = document.querySelector("#moves");
     const pairsLabel = document.querySelector("#pairs");
     const gameMessage = document.querySelector("#gameMessage");
+    const updateBanner = document.querySelector("#updateBanner");
+    const updateTitle = document.querySelector("#updateTitle");
+    const updateText = document.querySelector("#updateText");
+    const updateAction = document.querySelector("#updateAction");
+    const updateDismiss = document.querySelector("#updateDismiss");
     const tiles = ["医", "码", "云", "测", "端", "页", "库", "AI"];
     let audioContext = null;
+    let waitingWorker = null;
+    let deferredInstallPrompt = null;
+    let refreshingForUpdate = false;
 
     let firstTile = null;
     let lockBoard = false;
@@ -423,9 +490,78 @@
       }
     });
 
+    function showUpdatePrompt(worker) {
+      waitingWorker = worker;
+      updateTitle.textContent = "发现新版本";
+      updateText.textContent = "点击更新安装，完成后会自动刷新。";
+      updateAction.textContent = "更新安装";
+      updateBanner.hidden = false;
+    }
+
+    function showInstallPrompt() {
+      updateTitle.textContent = "可以安装应用";
+      updateText.textContent = "安装后可从桌面直接打开连连看。";
+      updateAction.textContent = "安装";
+      updateBanner.hidden = false;
+    }
+
+    updateAction.addEventListener("click", async () => {
+      if (waitingWorker) {
+        waitingWorker.postMessage({ type: "SKIP_WAITING" });
+        return;
+      }
+
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        updateBanner.hidden = true;
+      }
+    });
+
+    updateDismiss.addEventListener("click", () => {
+      updateBanner.hidden = true;
+    });
+
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      if (!waitingWorker) {
+        showInstallPrompt();
+      }
+    });
+
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js");
+        navigator.serviceWorker.register("./sw.js").then((registration) => {
+          if (registration.waiting && navigator.serviceWorker.controller) {
+            showUpdatePrompt(registration.waiting);
+          }
+
+          registration.addEventListener("updatefound", () => {
+            const worker = registration.installing;
+            if (!worker) {
+              return;
+            }
+
+            worker.addEventListener("statechange", () => {
+              if (worker.state === "installed" && navigator.serviceWorker.controller) {
+                showUpdatePrompt(worker);
+              }
+            });
+          });
+
+          registration.update();
+        });
+      });
+
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshingForUpdate) {
+          return;
+        }
+
+        refreshingForUpdate = true;
+        window.location.reload();
       });
     }
   </script>
