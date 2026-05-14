@@ -339,6 +339,86 @@
       color: var(--accent-dark);
     }
 
+    .game-2048-board {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      width: min(100%, 420px);
+      margin: 0 auto 14px;
+      padding: 10px;
+      border-radius: 12px;
+      background: #bcc7d6;
+    }
+
+    .tile-2048 {
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #eef2f6;
+      color: var(--text);
+      font-size: clamp(1.15rem, 6vw, 1.8rem);
+      font-weight: 800;
+    }
+
+    .tile-2048[data-value="2"],
+    .tile-2048[data-value="4"] {
+      background: #fff8de;
+    }
+
+    .tile-2048[data-value="8"],
+    .tile-2048[data-value="16"],
+    .tile-2048[data-value="32"] {
+      background: #dff5ee;
+    }
+
+    .tile-2048[data-value="64"],
+    .tile-2048[data-value="128"],
+    .tile-2048[data-value="256"] {
+      background: #dcecff;
+      color: var(--accent-dark);
+    }
+
+    .tile-2048[data-value="512"],
+    .tile-2048[data-value="1024"],
+    .tile-2048[data-value="2048"] {
+      background: #ffe1e1;
+      color: #9f1d1d;
+    }
+
+    .controls-2048 {
+      display: grid;
+      grid-template-columns: repeat(3, 56px);
+      justify-content: center;
+      gap: 8px;
+      margin: 0 0 14px;
+    }
+
+    .controls-2048 button {
+      min-height: 48px;
+      padding: 0;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      font-size: 1.25rem;
+    }
+
+    .controls-2048 .up {
+      grid-column: 2;
+    }
+
+    .controls-2048 .left {
+      grid-column: 1;
+    }
+
+    .controls-2048 .down {
+      grid-column: 2;
+    }
+
+    .controls-2048 .right {
+      grid-column: 3;
+    }
+
     @media (max-width: 480px) {
       main {
         padding: 24px;
@@ -366,11 +446,12 @@
 <body>
   <main>
     <h1>连连看</h1>
-    <p class="version">版本：v7</p>
+    <p class="version">版本：v8</p>
     <p>选择一个小游戏开始。</p>
     <div class="actions">
       <button class="primary-button" id="openGame" type="button">连连看</button>
       <button class="ghost-button" id="openSudoku" type="button">数独</button>
+      <button class="ghost-button" id="open2048" type="button">2048</button>
     </div>
   </main>
 
@@ -448,9 +529,40 @@
     </div>
   </section>
 
+  <section class="game-modal" id="modal2048" aria-hidden="true" aria-labelledby="title2048" role="dialog">
+    <div class="game-panel">
+      <div class="game-header">
+        <div>
+          <h2 id="title2048">2048</h2>
+          <p>合并相同数字，尽量做出 2048。</p>
+        </div>
+        <button class="ghost-button" id="close2048" type="button">关闭</button>
+      </div>
+
+      <div class="game-stats">
+        <span id="score2048">分数：0</span>
+        <span id="best2048">最大：0</span>
+      </div>
+
+      <div class="game-2048-board" id="board2048" aria-label="2048 棋盘"></div>
+      <div class="controls-2048" aria-label="2048 方向">
+        <button class="up" data-move-2048="up" type="button">↑</button>
+        <button class="left" data-move-2048="left" type="button">←</button>
+        <button class="down" data-move-2048="down" type="button">↓</button>
+        <button class="right" data-move-2048="right" type="button">→</button>
+      </div>
+      <p class="game-message" id="message2048"></p>
+
+      <div class="actions">
+        <button class="primary-button" id="restart2048" type="button">重新开始</button>
+      </div>
+    </div>
+  </section>
+
   <script>
     const openGame = document.querySelector("#openGame");
     const openSudoku = document.querySelector("#openSudoku");
+    const open2048 = document.querySelector("#open2048");
     const closeGame = document.querySelector("#closeGame");
     const restartGame = document.querySelector("#restartGame");
     const gameModal = document.querySelector("#gameModal");
@@ -471,6 +583,14 @@
     const restartSudoku = document.querySelector("#restartSudoku");
     const sudokuLevelButtons = document.querySelectorAll("[data-sudoku-level]");
     const sudokuKeys = document.querySelectorAll("[data-sudoku-digit]");
+    const modal2048 = document.querySelector("#modal2048");
+    const close2048 = document.querySelector("#close2048");
+    const board2048 = document.querySelector("#board2048");
+    const score2048 = document.querySelector("#score2048");
+    const best2048 = document.querySelector("#best2048");
+    const message2048 = document.querySelector("#message2048");
+    const restart2048 = document.querySelector("#restart2048");
+    const move2048Buttons = document.querySelectorAll("[data-move-2048]");
     const tiles = ["医", "码", "云", "测", "端", "页", "库", "AI"];
     let audioContext = null;
     let waitingWorker = null;
@@ -484,6 +604,9 @@
     let currentSudokuLevel = "easy";
     let selectedSudokuCell = null;
     let selectedSudokuDigit = "";
+    let cells2048 = [];
+    let scoreValue2048 = 0;
+    let bestValue2048 = 0;
     const sudokuSolution = "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
     const sudokuPuzzles = {
       easy: "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
@@ -779,6 +902,146 @@
     sudokuModal.addEventListener("click", (event) => {
       if (event.target === sudokuModal) {
         hideSudoku();
+      }
+    });
+
+    function emptyCells2048() {
+      return cells2048
+        .map((value, index) => value === 0 ? index : -1)
+        .filter((index) => index !== -1);
+    }
+
+    function addRandomTile2048() {
+      const empty = emptyCells2048();
+      if (!empty.length) {
+        return;
+      }
+
+      const index = empty[Math.floor(Math.random() * empty.length)];
+      cells2048[index] = Math.random() < 0.9 ? 2 : 4;
+    }
+
+    function draw2048() {
+      board2048.innerHTML = "";
+      cells2048.forEach((value) => {
+        const tile = document.createElement("div");
+        tile.className = "tile-2048";
+        tile.dataset.value = value || "";
+        tile.textContent = value || "";
+        board2048.appendChild(tile);
+      });
+      score2048.textContent = `分数：${scoreValue2048}`;
+      bestValue2048 = Math.max(bestValue2048, ...cells2048);
+      best2048.textContent = `最大：${bestValue2048}`;
+    }
+
+    function start2048() {
+      cells2048 = Array(16).fill(0);
+      scoreValue2048 = 0;
+      bestValue2048 = 0;
+      message2048.textContent = "";
+      addRandomTile2048();
+      addRandomTile2048();
+      draw2048();
+    }
+
+    function compactLine2048(line) {
+      const values = line.filter(Boolean);
+      const merged = [];
+      let gained = 0;
+
+      for (let index = 0; index < values.length; index += 1) {
+        if (values[index] === values[index + 1]) {
+          const value = values[index] * 2;
+          merged.push(value);
+          gained += value;
+          index += 1;
+        } else {
+          merged.push(values[index]);
+        }
+      }
+
+      while (merged.length < 4) {
+        merged.push(0);
+      }
+
+      return { line: merged, gained };
+    }
+
+    function move2048(direction) {
+      const previous = cells2048.join(",");
+      const next = Array(16).fill(0);
+      let gained = 0;
+
+      for (let row = 0; row < 4; row += 1) {
+        const line = [];
+        for (let col = 0; col < 4; col += 1) {
+          const source = direction === "left" || direction === "right"
+            ? row * 4 + col
+            : col * 4 + row;
+          line.push(cells2048[source]);
+        }
+
+        if (direction === "right" || direction === "down") {
+          line.reverse();
+        }
+
+        const result = compactLine2048(line);
+        let movedLine = result.line;
+        gained += result.gained;
+
+        if (direction === "right" || direction === "down") {
+          movedLine = movedLine.reverse();
+        }
+
+        for (let col = 0; col < 4; col += 1) {
+          const target = direction === "left" || direction === "right"
+            ? row * 4 + col
+            : col * 4 + row;
+          next[target] = movedLine[col];
+        }
+      }
+
+      if (next.join(",") === previous) {
+        message2048.textContent = "这个方向不能移动。";
+        return;
+      }
+
+      cells2048 = next;
+      scoreValue2048 += gained;
+      addRandomTile2048();
+      draw2048();
+
+      if (cells2048.includes(2048)) {
+        message2048.textContent = "达成 2048！";
+        playSound("win");
+      } else if (!emptyCells2048().length) {
+        message2048.textContent = "没有空格了，可以重新开始。";
+      } else {
+        message2048.textContent = "";
+      }
+    }
+
+    function show2048() {
+      modal2048.classList.add("is-open");
+      modal2048.setAttribute("aria-hidden", "false");
+      start2048();
+    }
+
+    function hide2048() {
+      modal2048.classList.remove("is-open");
+      modal2048.setAttribute("aria-hidden", "true");
+    }
+
+    open2048.addEventListener("click", show2048);
+    close2048.addEventListener("click", hide2048);
+    restart2048.addEventListener("click", start2048);
+    move2048Buttons.forEach((button) => {
+      button.addEventListener("click", () => move2048(button.dataset.move2048));
+    });
+    modal2048.addEventListener("click", (event) => {
+      if (event.target === modal2048) {
+        hide2048();
       }
     });
 
