@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>iphone-test</title>
+  <meta name="theme-color" content="#0b6bcb">
+  <meta name="description" content="iphone-test PWA with a link matching mini game.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <style>
     :root {
       color-scheme: light;
@@ -356,6 +360,12 @@
         hideGame();
       }
     });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js");
+      });
+    }
   </script>
 </body>
 </html>
