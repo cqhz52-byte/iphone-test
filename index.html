@@ -261,6 +261,7 @@
     const pairsLabel = document.querySelector("#pairs");
     const gameMessage = document.querySelector("#gameMessage");
     const tiles = ["医", "码", "云", "测", "端", "页", "库", "AI"];
+    let audioContext = null;
 
     let firstTile = null;
     let lockBoard = false;
@@ -274,6 +275,69 @@
     function updateStats() {
       movesLabel.textContent = `步数：${moves}`;
       pairsLabel.textContent = `配对：${matchedPairs} / ${tiles.length}`;
+    }
+
+    function getAudioContext() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) {
+        return null;
+      }
+
+      if (!audioContext) {
+        audioContext = new AudioContext();
+      }
+
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+
+      return audioContext;
+    }
+
+    function playTone(frequency, duration = 0.12, type = "sine", volume = 0.12, delay = 0) {
+      const context = getAudioContext();
+      if (!context) {
+        return;
+      }
+
+      const startTime = context.currentTime + delay;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      gain.gain.setValueAtTime(0.001, startTime);
+      gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration + 0.02);
+    }
+
+    function playSound(name) {
+      if (name === "flip") {
+        playTone(520, 0.08, "triangle", 0.08);
+        return;
+      }
+
+      if (name === "match") {
+        playTone(660, 0.09, "sine", 0.11);
+        playTone(880, 0.12, "sine", 0.1, 0.08);
+        return;
+      }
+
+      if (name === "miss") {
+        playTone(240, 0.14, "sawtooth", 0.07);
+        return;
+      }
+
+      if (name === "win") {
+        playTone(660, 0.1, "sine", 0.1);
+        playTone(880, 0.12, "sine", 0.1, 0.1);
+        playTone(1100, 0.18, "sine", 0.1, 0.22);
+      }
     }
 
     function buildBoard() {
@@ -306,6 +370,7 @@
       tile.classList.add("is-open");
       tile.textContent = tile.dataset.value;
       tile.setAttribute("aria-label", `卡片 ${tile.dataset.value}`);
+      playSound("flip");
 
       if (!firstTile) {
         firstTile = tile;
@@ -318,11 +383,13 @@
       if (firstTile.dataset.value === tile.dataset.value) {
         firstTile.classList.add("is-matched");
         tile.classList.add("is-matched");
+        playSound("match");
         firstTile = null;
         matchedPairs += 1;
         updateStats();
 
         if (matchedPairs === tiles.length) {
+          playSound("win");
           gameMessage.textContent = `通关成功，用了 ${moves} 步。`;
         }
         return;
@@ -331,6 +398,7 @@
       lockBoard = true;
       const previousTile = firstTile;
       window.setTimeout(() => {
+        playSound("miss");
         [previousTile, tile].forEach((item) => {
           item.classList.remove("is-open");
           item.textContent = "？";
