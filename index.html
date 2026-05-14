@@ -264,7 +264,7 @@
     .sudoku-board {
       display: grid;
       grid-template-columns: repeat(9, minmax(0, 1fr));
-      width: min(100%, 432px);
+      width: min(100%, 420px);
       margin: 0 auto 14px;
       border: 2px solid var(--text);
       background: var(--text);
@@ -440,13 +440,71 @@
       .update-actions {
         justify-content: flex-end;
       }
+
+      .sudoku-panel {
+        max-height: calc(100dvh - 20px);
+        padding: 14px;
+      }
+
+      .sudoku-panel .game-header {
+        align-items: center;
+        flex-direction: row;
+        margin-bottom: 10px;
+      }
+
+      .sudoku-panel .game-header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+
+      .sudoku-panel .game-header p {
+        display: none;
+      }
+
+      .sudoku-panel .game-header .ghost-button {
+        min-height: 36px;
+        padding: 0 12px;
+      }
+
+      .difficulty-row {
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+
+      .difficulty-row button {
+        min-height: 34px;
+        font-size: 0.9rem;
+      }
+
+      .sudoku-board {
+        width: min(100%, calc(100dvh - 300px), 420px);
+        margin-bottom: 10px;
+      }
+
+      .sudoku-pad {
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+
+      .sudoku-key {
+        min-height: 36px;
+      }
+
+      #sudokuMessage {
+        min-height: 22px;
+        margin-bottom: 10px;
+      }
+
+      .sudoku-panel .actions {
+        margin-top: 10px;
+      }
     }
   </style>
 </head>
 <body>
   <main>
     <h1>连连看</h1>
-    <p class="version">版本：v8</p>
+    <p class="version">版本：v9</p>
     <p>选择一个小游戏开始。</p>
     <div class="actions">
       <button class="primary-button" id="openGame" type="button">连连看</button>
