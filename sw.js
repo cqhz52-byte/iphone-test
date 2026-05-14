@@ -1,4 +1,4 @@
-const CACHE_NAME = "iphone-test-pwa-v2";
+const CACHE_NAME = "link-game-pwa-v3";
 const ASSETS = [
   "./",
   "./index.html",
