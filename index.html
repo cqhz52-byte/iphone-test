@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,6 +12,8 @@
       --text: #152033;
       --muted: #596579;
       --accent: #0b6bcb;
+      --accent-dark: #084f98;
+      --good: #157347;
       --border: #d9e2ef;
     }
 
@@ -65,8 +67,147 @@
       font-size: 0.92rem;
     }
 
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 24px 0 4px;
+    }
+
+    button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 10px;
+      padding: 0 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary-button {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(11, 107, 203, 0.18);
+    }
+
+    .primary-button:hover,
+    .primary-button:focus-visible {
+      background: var(--accent-dark);
+    }
+
+    .ghost-button {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+    }
+
     a {
       color: var(--accent);
+    }
+
+    .game-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 18px;
+      background: rgba(12, 22, 36, 0.54);
+      z-index: 10;
+    }
+
+    .game-modal.is-open {
+      display: grid;
+    }
+
+    .game-panel {
+      width: min(520px, 100%);
+      max-height: min(92vh, 720px);
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      background: #fff;
+      box-shadow: 0 24px 60px rgba(10, 24, 45, 0.2);
+    }
+
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    .game-header h2 {
+      margin: 0 0 6px;
+      font-size: 1.45rem;
+    }
+
+    .game-header p {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    .game-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0 0 16px;
+    }
+
+    .tile {
+      aspect-ratio: 1;
+      min-width: 0;
+      border: 1px solid #c9d8ea;
+      border-radius: 12px;
+      background: #eef5ff;
+      color: var(--accent-dark);
+      font-size: clamp(1.25rem, 8vw, 2rem);
+      box-shadow: inset 0 -4px 0 rgba(11, 107, 203, 0.08);
+    }
+
+    .tile.is-open {
+      background: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 10px 18px rgba(11, 107, 203, 0.12);
+    }
+
+    .tile.is-matched {
+      background: #e8f7ef;
+      border-color: #9bd5b8;
+      color: var(--good);
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .game-message {
+      min-height: 28px;
+      margin: 0 0 14px;
+      font-weight: 700;
+      color: var(--good);
+    }
+
+    @media (max-width: 480px) {
+      main {
+        padding: 24px;
+      }
+
+      .game-panel {
+        padding: 18px;
+      }
+
+      .game-header {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
@@ -77,6 +218,144 @@
     <p>This is a minimal static site for the mobile Codex end-to-end deployment exercise.</p>
     <p>If you can read this page on GitHub Pages, the repository root deployment is working.</p>
     <p>Repository: <a href="https://github.com/cqhz52-byte/iphone-test">cqhz52-byte/iphone-test</a></p>
+    <div class="actions">
+      <button class="primary-button" id="openGame" type="button">开启一概连连看</button>
+    </div>
   </main>
+
+  <section class="game-modal" id="gameModal" aria-hidden="true" aria-labelledby="gameTitle" role="dialog">
+    <div class="game-panel">
+      <div class="game-header">
+        <div>
+          <h2 id="gameTitle">一概连连看</h2>
+          <p>翻开两张相同卡片即可消除，全部配对就通关。</p>
+        </div>
+        <button class="ghost-button" id="closeGame" type="button">关闭</button>
+      </div>
+
+      <div class="game-stats">
+        <span id="moves">步数：0</span>
+        <span id="pairs">配对：0 / 8</span>
+      </div>
+
+      <div class="game-board" id="gameBoard" aria-label="一概连连看棋盘"></div>
+      <p class="game-message" id="gameMessage"></p>
+
+      <div class="actions">
+        <button class="primary-button" id="restartGame" type="button">重新开始</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const openGame = document.querySelector("#openGame");
+    const closeGame = document.querySelector("#closeGame");
+    const restartGame = document.querySelector("#restartGame");
+    const gameModal = document.querySelector("#gameModal");
+    const gameBoard = document.querySelector("#gameBoard");
+    const movesLabel = document.querySelector("#moves");
+    const pairsLabel = document.querySelector("#pairs");
+    const gameMessage = document.querySelector("#gameMessage");
+    const tiles = ["医", "码", "云", "测", "端", "页", "库", "AI"];
+
+    let firstTile = null;
+    let lockBoard = false;
+    let moves = 0;
+    let matchedPairs = 0;
+
+    function shuffle(items) {
+      return [...items].sort(() => Math.random() - 0.5);
+    }
+
+    function updateStats() {
+      movesLabel.textContent = `步数：${moves}`;
+      pairsLabel.textContent = `配对：${matchedPairs} / ${tiles.length}`;
+    }
+
+    function buildBoard() {
+      firstTile = null;
+      lockBoard = false;
+      moves = 0;
+      matchedPairs = 0;
+      gameMessage.textContent = "";
+      gameBoard.innerHTML = "";
+      updateStats();
+
+      shuffle([...tiles, ...tiles]).forEach((value, index) => {
+        const button = document.createElement("button");
+        button.className = "tile";
+        button.type = "button";
+        button.dataset.value = value;
+        button.dataset.index = index;
+        button.textContent = "？";
+        button.setAttribute("aria-label", "未翻开的卡片");
+        button.addEventListener("click", () => flipTile(button));
+        gameBoard.appendChild(button);
+      });
+    }
+
+    function flipTile(tile) {
+      if (lockBoard || tile === firstTile || tile.classList.contains("is-matched")) {
+        return;
+      }
+
+      tile.classList.add("is-open");
+      tile.textContent = tile.dataset.value;
+      tile.setAttribute("aria-label", `卡片 ${tile.dataset.value}`);
+
+      if (!firstTile) {
+        firstTile = tile;
+        return;
+      }
+
+      moves += 1;
+      updateStats();
+
+      if (firstTile.dataset.value === tile.dataset.value) {
+        firstTile.classList.add("is-matched");
+        tile.classList.add("is-matched");
+        firstTile = null;
+        matchedPairs += 1;
+        updateStats();
+
+        if (matchedPairs === tiles.length) {
+          gameMessage.textContent = `通关成功，用了 ${moves} 步。`;
+        }
+        return;
+      }
+
+      lockBoard = true;
+      const previousTile = firstTile;
+      window.setTimeout(() => {
+        [previousTile, tile].forEach((item) => {
+          item.classList.remove("is-open");
+          item.textContent = "？";
+          item.setAttribute("aria-label", "未翻开的卡片");
+        });
+        firstTile = null;
+        lockBoard = false;
+      }, 650);
+    }
+
+    function showGame() {
+      gameModal.classList.add("is-open");
+      gameModal.setAttribute("aria-hidden", "false");
+      buildBoard();
+    }
+
+    function hideGame() {
+      gameModal.classList.remove("is-open");
+      gameModal.setAttribute("aria-hidden", "true");
+    }
+
+    openGame.addEventListener("click", showGame);
+    closeGame.addEventListener("click", hideGame);
+    restartGame.addEventListener("click", buildBoard);
+    gameModal.addEventListener("click", (event) => {
+      if (event.target === gameModal) {
+        hideGame();
+      }
+    });
+  </script>
 </body>
 </html>
