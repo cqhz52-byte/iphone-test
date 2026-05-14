@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>iphone-test</title>
+  <title>连连看</title>
   <meta name="theme-color" content="#0b6bcb">
-  <meta name="description" content="iphone-test PWA with a link matching mini game.">
+  <meta name="description" content="连连看 PWA 小游戏。">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <style>
@@ -60,19 +60,8 @@
       color: var(--muted);
     }
 
-    .pill {
-      display: inline-block;
-      margin-bottom: 18px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: #e7f1ff;
-      color: var(--accent);
-      font-weight: 600;
-      font-size: 0.92rem;
-    }
-
     .version {
-      margin-top: -4px;
+      margin-top: 0;
       font-size: 0.92rem;
       font-weight: 700;
       color: var(--accent-dark);
@@ -224,14 +213,11 @@
 </head>
 <body>
   <main>
-    <div class="pill">GitHub Pages Ready</div>
-    <h1>iphone-test</h1>
-    <p class="version">版本：v2</p>
-    <p>This is a minimal static site for the mobile Codex end-to-end deployment exercise.</p>
-    <p>If you can read this page on GitHub Pages, the repository root deployment is working.</p>
-    <p>Repository: <a href="https://github.com/cqhz52-byte/iphone-test">cqhz52-byte/iphone-test</a></p>
+    <h1>连连看</h1>
+    <p class="version">版本：v3</p>
+    <p>翻开两张相同卡片即可消除，全部配对就通关。</p>
     <div class="actions">
-      <button class="primary-button" id="openGame" type="button">开启一概连连看</button>
+      <button class="primary-button" id="openGame" type="button">开始游戏</button>
     </div>
   </main>
 
@@ -239,7 +225,7 @@
     <div class="game-panel">
       <div class="game-header">
         <div>
-          <h2 id="gameTitle">一概连连看</h2>
+          <h2 id="gameTitle">连连看</h2>
           <p>翻开两张相同卡片即可消除，全部配对就通关。</p>
         </div>
         <button class="ghost-button" id="closeGame" type="button">关闭</button>
@@ -250,7 +236,7 @@
         <span id="pairs">配对：0 / 8</span>
       </div>
 
-      <div class="game-board" id="gameBoard" aria-label="一概连连看棋盘"></div>
+      <div class="game-board" id="gameBoard" aria-label="连连看棋盘"></div>
       <p class="game-message" id="gameMessage"></p>
 
       <div class="actions">
